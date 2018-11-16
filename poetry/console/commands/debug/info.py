@@ -12,17 +12,16 @@ class DebugInfoCommand(Command):
     """
 
     def handle(self):
-        from ....utils.env import Env
+        from ....utils.env import EnvManager
 
-        poetry = self.poetry
-        env = Env.get(cwd=poetry.file.parent)
+        env = EnvManager(self.poetry.config).get(cwd=self.poetry.file.parent)
 
         poetry_python_version = ".".join(str(s) for s in sys.version_info[:3])
 
         self.output.title("Poetry")
         self.output.listing(
             [
-                "<info>Version</info>: <comment>{}</>".format(poetry.VERSION),
+                "<info>Version</info>: <comment>{}</>".format(self.poetry.VERSION),
                 "<info>Python</info>:  <comment>{}</>".format(poetry_python_version),
             ]
         )
