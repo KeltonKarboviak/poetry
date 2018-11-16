@@ -21,6 +21,18 @@ def remove_venv(path):
     shutil.rmtree(path)
 
 
+def check_output_wrapper(version=Version.parse("3.7.1")):
+    def check_output(cmd, *args, **kwargs):
+        if "sys.version_info[:3]" in cmd:
+            return version.text
+        elif "sys.version_info[:2]" in cmd:
+            return "{}.{}".format(version.major, version.minor)
+        else:
+            return str(Path("/prefix"))
+
+    return check_output
+
+
 def test_activate_activates_non_existing_virtualenv_no_envs_file(
     tmp_dir, config, mocker, environ
 ):
@@ -29,9 +41,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
 
     config.add_property("settings.virtualenvs.path", str(tmp_dir))
 
-    mocker.patch(
-        "subprocess.check_output", side_effect=["3.7.1", "3.7", "/prefix", "/prefix"]
-    )
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
     m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
 
     env = EnvManager(config).activate("python3.7", NullIO(), cwd=CWD)
@@ -60,7 +70,7 @@ def test_activate_activates_existing_virtualenv_no_envs_file(
 
     config.add_property("settings.virtualenvs.path", str(tmp_dir))
 
-    mocker.patch("subprocess.check_output", side_effect=["3.7.1", "/prefix"])
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
     m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
 
     env = EnvManager(config).activate("python3.7", NullIO(), cwd=CWD)
@@ -92,7 +102,7 @@ def test_activate_activates_same_virtualenv_with_envs_file(
 
     config.add_property("settings.virtualenvs.path", str(tmp_dir))
 
-    mocker.patch("subprocess.check_output", side_effect=["3.7.1", "/prefix"])
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
     m = mocker.patch("poetry.utils.env.EnvManager.create_venv")
 
     env = EnvManager(config).activate("python3.7", NullIO(), cwd=CWD)
@@ -125,7 +135,7 @@ def test_activate_activates_different_virtualenv_with_envs_file(
 
     mocker.patch(
         "subprocess.check_output",
-        side_effect=["3.6.6", "3.6", "3.6", "/prefix", "/prefix"],
+        side_effect=check_output_wrapper(Version.parse("3.6.6")),
     )
     m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
 
@@ -159,10 +169,7 @@ def test_activate_activates_recreates_for_different_minor(
 
     config.add_property("settings.virtualenvs.path", str(tmp_dir))
 
-    mocker.patch(
-        "subprocess.check_output",
-        side_effect=["3.7.1", "3.7", "3.7", "/prefix", "/prefix"],
-    )
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
     build_venv_m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=build_venv
     )
@@ -198,7 +205,7 @@ def test_deactivate_non_activated_but_existing(tmp_dir, config, mocker, environ)
 
     config.add_property("settings.virtualenvs.path", str(tmp_dir))
 
-    mocker.patch("subprocess.check_output", side_effect=["/prefix", "/prefix"])
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
 
     EnvManager(config).deactivate(NullIO(), cwd=CWD)
     env = EnvManager(config).get(cwd=CWD)
@@ -233,7 +240,7 @@ def test_deactivate_activated(tmp_dir, config, mocker, environ):
 
     config.add_property("settings.virtualenvs.path", str(tmp_dir))
 
-    mocker.patch("subprocess.check_output", side_effect=["/prefix", "/prefix"])
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
 
     EnvManager(config).deactivate(NullIO(), cwd=CWD)
     env = EnvManager(config).get(cwd=CWD)
@@ -260,7 +267,7 @@ def test_get_prefers_explicitly_activated_virtualenvs_over_env_var(
     doc["simple_project"] = {"minor": "3.7", "patch": "3.7.0"}
     envs_file.write(doc)
 
-    mocker.patch("subprocess.check_output", side_effect=["/prefix"])
+    mocker.patch("subprocess.check_output", side_effect=check_output_wrapper())
 
     env = EnvManager(config).get(cwd=CWD)
 
